@@ -1,0 +1,43 @@
+//
+// !!! WARNING !!! AUTO-GENERATED FILE!
+// PLEASE DO NOT MODIFY IT AND USE "platformio.ini":
+// https://docs.platformio.org/page/projectconf/section_env_build.html#build-flags
+//
+{
+    "configurations": [
+        {
+            "name": "PlatformIO",
+            "includePath": [
+                "C:/Users/colin/Projects/Project_005_Cessna_Controls/code_repository/cessna_controls/include",
+                "C:/Users/colin/Projects/Project_005_Cessna_Controls/code_repository/cessna_controls/src",
+                "C:/Users/colin/.platformio/packages/framework-libopencm3",
+                "C:/Users/colin/.platformio/packages/framework-libopencm3/include",
+                ""
+            ],
+            "browse": {
+                "limitSymbolsToIncludedHeaders": true,
+                "path": [
+                    "C:/Users/colin/Projects/Project_005_Cessna_Controls/code_repository/cessna_controls/include",
+                    "C:/Users/colin/Projects/Project_005_Cessna_Controls/code_repository/cessna_controls/src",
+                    "C:/Users/colin/.platformio/packages/framework-libopencm3",
+                    "C:/Users/colin/.platformio/packages/framework-libopencm3/include",
+                    ""
+                ]
+            },
+            "defines": [
+                "PLATFORMIO=50204",
+                "STM32F103xB",
+                "STM32F1",
+                "F_CPU=72000000L",
+                ""
+            ],
+            "compilerPath": "C:/Users/colin/.platformio/packages/toolchain-gccarmnoneeabi@1.70201.0/bin/arm-none-eabi-gcc.exe",
+            "compilerArgs": [
+                "-mthumb",
+                "-mcpu=cortex-m3",
+                ""
+            ]
+        }
+    ],
+    "version": 4
+}
