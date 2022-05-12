@@ -7,6 +7,8 @@
 #include <libopencm3/usb/usbd.h>
 #include <libopencm3/usb/hid.h>
 #include <string.h>
+#include <math.h>
+
 
 #include "csd_usb.h"
 #include "csd_gpio.h"
@@ -32,9 +34,16 @@ double mapOneRangeToAnother(double sourceNumber, double fromA, double fromB, dou
 
 // map x to (a1,a2) from (b1, b2)
 int csd_map(int x, int a1, int a2, int b1, int b2) {
+	if(x > b2) x = b2;
+	if(x < b1) x = b1;
     int x1 = (x - b1) * (b2 - b1);
     float x2 = (float)a1 + ((float)(x1)*(float)(a2 - a1));
-    return (int)x2;
+
+    int xr = (int)x2;
+	if(xr > a2) xr = a2;
+	if(xr < a1) xr = a1;
+
+    return xr;
 };
 
 
@@ -60,6 +69,7 @@ int main(void)
 
     /* ADC channels for conversion*/
 	uint8_t channel_array[2] = {0};
+	//channel_array[1] = 0;
 	/*
 	 * This is a somewhat common cheap hack to trigger device re-enumeration
 	 * on startup.  Assuming a fixed external pullup on D+, (For USB-FS)
@@ -79,30 +89,31 @@ int main(void)
 	usbd_dev = usbd_init(&st_usbfs_v1_usb_driver, &dev_descr, &config, usb_strings, 3, usbd_control_buffer, sizeof(usbd_control_buffer));
 	usbd_register_set_config_callback(usbd_dev, hid_set_config);
 
+	//enum {MIXTURE}
+	
 	while (true)
 	{
 		channel_array[0] = 0;
 		adc_set_regular_sequence(ADC1, 1, channel_array);
-
-		//ADC1
 		adc_start_conversion_direct(ADC1);
-		/* Wait for end of conversion. */
 		while (!(adc_eoc(ADC1)))
 			continue;
-		
 		int16_t tk0 = adc_read_regular(ADC1); 
-		edtc_report.mixture = (int)mapOneRangeToAnother(tk0, 0 , 4096, -127, 127, 0);
-		csint[0] = tk0;
-		
-		//ADC2
+		int tmp_mix = (int)mapOneRangeToAnother(tk0, 0 , 4096, -127, 127, 0);
+		if(tmp_mix > 127) tmp_mix = 127;
+		if(tmp_mix < -127) tmp_mix = -127;
+		edtc_report.mixture = tmp_mix;
+
 		channel_array[0] = 1;
 		adc_set_regular_sequence(ADC1, 1, channel_array);
 		adc_start_conversion_direct(ADC1);
 		while (!(adc_eoc(ADC1)))
 			continue;
 		int16_t tk1 = adc_read_regular(ADC1);
-		edtc_report.prop = (int)mapOneRangeToAnother(tk1, 0 , 4096, -127, 127, 0);
-		csint[1] = tk1;
+		int tmp_prop = (int)mapOneRangeToAnother(tk1, 0 , 4096, -127, 127, 0);
+		if(tmp_prop > 127) tmp_prop = 127;
+		if(tmp_prop < -127) tmp_prop = -127;
+		edtc_report.prop = tmp_prop;
 
 		channel_array[0] = 2;
 		adc_set_regular_sequence(ADC1, 1, channel_array);
@@ -110,8 +121,10 @@ int main(void)
 		while (!(adc_eoc(ADC1)))
 			continue;
 		int16_t tk2 = adc_read_regular(ADC1);
-		edtc_report.throttle = (int)mapOneRangeToAnother(tk2, 0 , 4096, -127, 127, 0);
-		csint[2] = tk2;
+		int tmp_throttle = (int)mapOneRangeToAnother(tk2, 0 , 4096, -127, 127, 0);
+		if(tmp_throttle > 127) tmp_throttle = 127;
+		if(tmp_throttle < -127) tmp_throttle = -127;
+		edtc_report.throttle = tmp_throttle;
 
 		channel_array[0] = 3;
 		adc_set_regular_sequence(ADC1, 1, channel_array);
@@ -119,15 +132,11 @@ int main(void)
 		while (!(adc_eoc(ADC1)))
 			continue;
 		int16_t tk3 = adc_read_regular(ADC1);
-		edtc_report.pitch_trim = 30; //(int)mapOneRangeToAnother(tk3, 0 , 2708, -127, 127, 0);
-		csint[3] = tk3;
+		int tmp_trim = (int)mapOneRangeToAnother(tk3, 0 , 2560, -127, 127, 0);
+		if(tmp_trim > 127) tmp_trim = 127;
+		if(tmp_trim < -127) tmp_trim = -127;
+		edtc_report.pitch_trim = tmp_trim;
 
-		usbd_poll(usbd_dev);
-	}
-}
-
-void sys_tick_handler(void)
-{
 	// index directional switch
 	swbnk[0] = !gpio_get(GPIOB, GPIO0); // idx push
 	swbnk[1] = 0;
@@ -149,6 +158,14 @@ void sys_tick_handler(void)
 	memcpy(&outbuf[2], &edtc_report.mixture, 1);
 	memcpy(&outbuf[3], &edtc_report.pitch_trim, 1);
 	memcpy(&outbuf[4], &edtc_report.buttons, 1);
+
+		usbd_poll(usbd_dev);
+	}
+}
+
+void sys_tick_handler(void)
+{
+
 
 	usbd_ep_write_packet(usbd_dev, 0x81, &outbuf, 5);
 
