@@ -9,6 +9,12 @@ static void gpio_setup(void)
 	rcc_periph_clock_enable(RCC_GPIOA); 
 	rcc_periph_clock_enable(RCC_GPIOB); 
 	rcc_periph_clock_enable(RCC_GPIOC);
+
+	
+	// USESERVO
+	rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_IOPCEN);
+	
+
     // Initialize LED
     gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_10_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO13);
     //gpio_set(GPIOC, GPIO13);
@@ -16,14 +22,14 @@ static void gpio_setup(void)
 	gpio_clear(GPIOC, GPIO13);
 
     // Configure discrete inputs
-    gpio_set_mode(GPIOB, GPIO_MODE_INPUT, GPIO_CNF_INPUT_PULL_UPDOWN, GPIO0);
-    gpio_set(GPIOB, GPIO0);
+    gpio_set_mode(GPIOB, GPIO_MODE_INPUT, GPIO_CNF_INPUT_PULL_UPDOWN, GPIO0 | GPIO10 | GPIO11);
+    gpio_set(GPIOB, GPIO0 | GPIO10 | GPIO11);
 
     // Configure analog inputs
-    gpio_set_mode(GPIOA, GPIO_MODE_INPUT, GPIO_CNF_INPUT_ANALOG, GPIO0);
-    gpio_set_mode(GPIOA, GPIO_MODE_INPUT, GPIO_CNF_INPUT_ANALOG, GPIO1);
-	gpio_set_mode(GPIOA, GPIO_MODE_INPUT, GPIO_CNF_INPUT_ANALOG, GPIO2);
+    gpio_set_mode(GPIOA, GPIO_MODE_INPUT, GPIO_CNF_INPUT_ANALOG, GPIO6);
     gpio_set_mode(GPIOA, GPIO_MODE_INPUT, GPIO_CNF_INPUT_ANALOG, GPIO3);
+	gpio_set_mode(GPIOA, GPIO_MODE_INPUT, GPIO_CNF_INPUT_ANALOG, GPIO4);
+    gpio_set_mode(GPIOA, GPIO_MODE_INPUT, GPIO_CNF_INPUT_ANALOG, GPIO5);
 }
 
 static void adc_setup(void)

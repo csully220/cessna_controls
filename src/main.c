@@ -12,6 +12,9 @@
 
 #include "csd_usb.h"
 #include "csd_gpio.h"
+#include "servo.h"
+
+#define SRVLAG 24
 
 bool csdbg[8];
 float csflt[8];
@@ -46,6 +49,18 @@ int csd_map(int x, int a1, int a2, int b1, int b2) {
     return xr;
 };
 
+void csd_delay(int d)
+{
+
+     int i;
+
+     for(i = 0; i < d; i++) {
+          __asm("nop");
+     }
+}
+
+int servo_dc = 0; // servo delay counter
+const int servo_dd = 200; // servo delay duration
 
 int main(void)
 {
@@ -65,7 +80,9 @@ int main(void)
 
 	gpio_setup();
 	adc_setup();
-
+	servo_init();
+	
+	servo_set_position(SERVO_CH1, SERVO_NULL);
 
     /* ADC channels for conversion*/
 	uint8_t channel_array[2] = {0};
@@ -82,65 +99,106 @@ int main(void)
 	gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_2_MHZ,
 		GPIO_CNF_OUTPUT_PUSHPULL, GPIO12);
 	gpio_clear(GPIOA, GPIO12);
-	for (unsigned i = 0; i < 800000; i++) {
+	csd_delay(800000);
+	/*for (unsigned i = 0; i < 800000; i++) {
 		__asm__("nop");
-	}
+	}*/
 
 	usbd_dev = usbd_init(&st_usbfs_v1_usb_driver, &dev_descr, &config, usb_strings, 3, usbd_control_buffer, sizeof(usbd_control_buffer));
 	usbd_register_set_config_callback(usbd_dev, hid_set_config);
 
 	//enum {MIXTURE}
 	
+	uint32_t servo_pos_arr[SRVLAG] = {1550};
+
+
 	while (true)
 	{
-		channel_array[0] = 0;
+		
+		channel_array[0] = 6;
 		adc_set_regular_sequence(ADC1, 1, channel_array);
 		adc_start_conversion_direct(ADC1);
 		while (!(adc_eoc(ADC1)))
 			continue;
 		int16_t tk0 = adc_read_regular(ADC1); 
-		int tmp_mix = (int)mapOneRangeToAnother(tk0, 0 , 4096, -127, 127, 0);
+		int tmp_mix = (int)mapOneRangeToAnother(tk0, 0 , 4095, -127, 127, 0);
 		if(tmp_mix > 127) tmp_mix = 127;
 		if(tmp_mix < -127) tmp_mix = -127;
 		edtc_report.mixture = tmp_mix;
-
-		channel_array[0] = 1;
-		adc_set_regular_sequence(ADC1, 1, channel_array);
-		adc_start_conversion_direct(ADC1);
-		while (!(adc_eoc(ADC1)))
-			continue;
-		int16_t tk1 = adc_read_regular(ADC1);
-		int tmp_prop = (int)mapOneRangeToAnother(tk1, 0 , 4096, -127, 127, 0);
-		if(tmp_prop > 127) tmp_prop = 127;
-		if(tmp_prop < -127) tmp_prop = -127;
-		edtc_report.prop = tmp_prop;
-
-		channel_array[0] = 2;
-		adc_set_regular_sequence(ADC1, 1, channel_array);
-		adc_start_conversion_direct(ADC1);
-		while (!(adc_eoc(ADC1)))
-			continue;
-		int16_t tk2 = adc_read_regular(ADC1);
-		int tmp_throttle = (int)mapOneRangeToAnother(tk2, 0 , 4096, -127, 127, 0);
-		if(tmp_throttle > 127) tmp_throttle = 127;
-		if(tmp_throttle < -127) tmp_throttle = -127;
-		edtc_report.throttle = tmp_throttle;
 
 		channel_array[0] = 3;
 		adc_set_regular_sequence(ADC1, 1, channel_array);
 		adc_start_conversion_direct(ADC1);
 		while (!(adc_eoc(ADC1)))
 			continue;
+		int16_t tk1 = adc_read_regular(ADC1);
+		int tmp_prop = (int)mapOneRangeToAnother(tk1, 0 , 4095, -127, 127, 0);
+		if(tmp_prop > 127) tmp_prop = 127;
+		if(tmp_prop < -127) tmp_prop = -127;
+		edtc_report.prop = tmp_prop;
+
+		channel_array[0] = 4;
+		adc_set_regular_sequence(ADC1, 1, channel_array);
+		adc_start_conversion_direct(ADC1);
+		while (!(adc_eoc(ADC1)))
+			continue;
+		int16_t tk2 = adc_read_regular(ADC1);
+		int tmp_throttle = (int)mapOneRangeToAnother(tk2, 0 , 4095, -127, 127, 0);
+		if(tmp_throttle > 127) tmp_throttle = 127;
+		if(tmp_throttle < -127) tmp_throttle = -127;
+		edtc_report.throttle = tmp_throttle;
+
+		channel_array[0] = 5;
+		adc_set_regular_sequence(ADC1, 1, channel_array);
+		adc_start_conversion_direct(ADC1);
+		while (!(adc_eoc(ADC1)))
+			continue;
 		int16_t tk3 = adc_read_regular(ADC1);
-		int tmp_trim = (int)mapOneRangeToAnother(tk3, 0 , 2560, -127, 127, 0);
+		int tmp_trim = (int)mapOneRangeToAnother(tk3, 0 , 3200, -127, 127, 0);
 		if(tmp_trim > 127) tmp_trim = 127;
 		if(tmp_trim < -127) tmp_trim = -127;
 		edtc_report.pitch_trim = tmp_trim;
 
+		if(servo_dc >= servo_dd) {
+			float et_pos = ((((float)tmp_trim + 127.0)) / 255.0); // elevator trim indicator position
+            const int et_max = 1780;
+			const int et_min = 1180;
+			const int et_neutral = 1550;
+			int et_range = et_max - et_min;
+			uint32_t servo_pos = (et_pos * et_range) + et_min;
+
+			//#define SERVO_MAX		(2050)
+			/**
+			 * Min. pos. at 950  us (0.95ms).
+			 */
+			//#define SERVO_MIN		(950)
+			/**
+			 * Middle pos. at 1580 us (1.58ms).
+			 */
+			//#define SERVO_NULL		(1500)
+			uint32_t servo_pos_sw[SRVLAG];
+			uint32_t servo_pos_now = servo_pos_arr[0];
+			//memcpy(servo_pos_sw, servo_pos_arr, SRVLAG);
+			for (int i=0; i<SRVLAG; i++) {
+				servo_pos_sw[i] = servo_pos_arr[i];
+			}
+
+			for (int i=0; i<SRVLAG - 1; i++) {
+				servo_pos_arr[i] = servo_pos_sw[i+1];
+			}
+			servo_pos_arr[SRVLAG-1] = servo_pos;
+			//csint[0] = servo_pos_now;
+			
+			servo_set_position(SERVO_CH1, servo_pos_now);
+
+			servo_dc = 0;
+		}
+		servo_dc++;
+
 	// index directional switch
 	swbnk[0] = !gpio_get(GPIOB, GPIO0); // idx push
-	swbnk[1] = 0;
-	swbnk[2] = 0;
+	swbnk[1] = !gpio_get(GPIOB, GPIO10);
+	swbnk[2] = !gpio_get(GPIOB, GPIO11);
 	swbnk[3] = 0;
 	swbnk[4] = 0;
 	swbnk[5] = 0;
