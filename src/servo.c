@@ -33,10 +33,10 @@ void servo_init(void)
      pwm_init_output_channel(TIM2, SERVO_CH1, &RCC_APB2ENR, RCC_APB2ENR_IOPAEN, GPIOA, GPIO_TIM2_CH2);
 
      /* init output of channel3 of timer2 */
-     pwm_init_output_channel(TIM2, SERVO_CH2, &RCC_APB2ENR, RCC_APB2ENR_IOPAEN, GPIOA, GPIO_TIM2_CH3);
+     //pwm_init_output_channel(TIM2, SERVO_CH2, &RCC_APB2ENR, RCC_APB2ENR_IOPAEN, GPIOA, GPIO_TIM2_CH3);
 
      pwm_set_pulse_width(TIM2, SERVO_CH1, SERVO_NULL);
-     pwm_set_pulse_width(TIM2, SERVO_CH2, SERVO_NULL);
+     //pwm_set_pulse_width(TIM2, SERVO_CH2, SERVO_NULL);
 
      /* start timer1 */
      pwm_start_timer(TIM2);

@@ -60,7 +60,7 @@ void csd_delay(int d)
 }
 
 int servo_dc = 0; // servo delay counter
-const int servo_dd = 200; // servo delay duration
+const int servo_dd = 150; // servo delay duration
 
 int main(void)
 {
@@ -132,7 +132,7 @@ int main(void)
 		while (!(adc_eoc(ADC1)))
 			continue;
 		int16_t tk1 = adc_read_regular(ADC1);
-		int tmp_prop = (int)mapOneRangeToAnother(tk1, 0 , 4095, -127, 127, 0);
+		int tmp_prop = (int)mapOneRangeToAnother(tk1, 0, 4095, -127, 127, 0);
 		if(tmp_prop > 127) tmp_prop = 127;
 		if(tmp_prop < -127) tmp_prop = -127;
 		edtc_report.prop = tmp_prop;
@@ -143,7 +143,7 @@ int main(void)
 		while (!(adc_eoc(ADC1)))
 			continue;
 		int16_t tk2 = adc_read_regular(ADC1);
-		int tmp_throttle = (int)mapOneRangeToAnother(tk2, 0 , 4095, -127, 127, 0);
+		int tmp_throttle = (int)mapOneRangeToAnother(tk2, 0, 4095, -127, 127, 0);
 		if(tmp_throttle > 127) tmp_throttle = 127;
 		if(tmp_throttle < -127) tmp_throttle = -127;
 		edtc_report.throttle = tmp_throttle;
@@ -154,43 +154,14 @@ int main(void)
 		while (!(adc_eoc(ADC1)))
 			continue;
 		int16_t tk3 = adc_read_regular(ADC1);
-		int tmp_trim = (int)mapOneRangeToAnother(tk3, 0 , 3200, -127, 127, 0);
+		int tmp_trim = (int)mapOneRangeToAnother(tk3, 0, 3200, -127, 127, 0);
 		if(tmp_trim > 127) tmp_trim = 127;
 		if(tmp_trim < -127) tmp_trim = -127;
 		edtc_report.pitch_trim = tmp_trim;
 
 		if(servo_dc >= servo_dd) {
-			float et_pos = ((((float)tmp_trim + 127.0)) / 255.0); // elevator trim indicator position
-            const int et_max = 1780;
-			const int et_min = 1180;
-			const int et_neutral = 1550;
-			int et_range = et_max - et_min;
-			uint32_t servo_pos = (et_pos * et_range) + et_min;
-
-			//#define SERVO_MAX		(2050)
-			/**
-			 * Min. pos. at 950  us (0.95ms).
-			 */
-			//#define SERVO_MIN		(950)
-			/**
-			 * Middle pos. at 1580 us (1.58ms).
-			 */
-			//#define SERVO_NULL		(1500)
-			uint32_t servo_pos_sw[SRVLAG];
-			uint32_t servo_pos_now = servo_pos_arr[0];
-			//memcpy(servo_pos_sw, servo_pos_arr, SRVLAG);
-			for (int i=0; i<SRVLAG; i++) {
-				servo_pos_sw[i] = servo_pos_arr[i];
-			}
-
-			for (int i=0; i<SRVLAG - 1; i++) {
-				servo_pos_arr[i] = servo_pos_sw[i+1];
-			}
-			servo_pos_arr[SRVLAG-1] = servo_pos;
-			//csint[0] = servo_pos_now;
-			
-			servo_set_position(SERVO_CH1, servo_pos_now);
-
+			uint32_t servo_pos = (int)mapOneRangeToAnother((double)tmp_trim, -127, 127, 1780, 1180, 0);
+			servo_set_position(SERVO_CH1, servo_pos);
 			servo_dc = 0;
 		}
 		servo_dc++;
